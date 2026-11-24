@@ -4,15 +4,16 @@
 [![rank](https://make.fun/badge/news-image-20261124/Idnafaa/news-image-20261124/rank.svg)](https://make.fun/bounty/news-image-20261124/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=news-image-20261124)
 [![reward](https://make.fun/badge/news-image-20261124/Idnafaa/news-image-20261124/reward.svg)](https://make.fun/bounty/news-image-20261124?utm_source=github&utm_medium=readme&utm_campaign=news-image-20261124)
 
-A program that sums up the world's news of Tuesday 24 November 2026 in a
-single image: Nvidia reinstates Jensen Huang as chief, Ukraine sinks a
-Russian warship off Libya, NATO sends AWACS to Poland, COP31 ends with no
-deal, and 27 more stories from the day - 31 stories in one poster.
+One poster that sums up Tuesday 24 November 2026: the lead story is
+Nvidia bringing Jensen Huang back as chief executive, followed by six
+illustrated cards — Ukraine sinking a Russian warship off Libya, NATO
+sending AWACS to Poland, COP31 ending without a deal, and more — plus
+24 briefs from around the world. 31 stories, one image.
 
 ## Run it
 
 ```sh
-python3 render.py   # rebuild entry.png (pure Python stdlib)
+python3 render.py   # rebuild entry.png (pure Python stdlib, no network)
 python3 main.py     # copy entry.png to /output/entry.png
 ```
 

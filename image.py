@@ -1,5 +1,8 @@
-# image.py — a tiny pure-stdlib raster canvas and PNG writer.
-# No third-party code: RGB bytearray buffer, scanline PNG via zlib.
+# image.py — a small pure-stdlib raster canvas plus a PNG encoder.
+#
+# The poster renderer in render.py draws on this Canvas and nothing else:
+# one RGB bytearray, filled shapes, bitmap text, then a scanline PNG
+# written with zlib. No third-party packages are involved anywhere.
 import base64
 import struct
 import zlib
@@ -7,32 +10,47 @@ import zlib
 from font_data import FONTS
 
 
-def _hex(rgb_hex):
-    rgb_hex = rgb_hex.lstrip("#")
-    return (int(rgb_hex[0:2], 16), int(rgb_hex[2:4], 16), int(rgb_hex[4:6], 16))
+def _parse_hex(spec):
+    """Turn a '#RRGGBB' string into an (r, g, b) triple of ints."""
+    spec = spec.lstrip("#")
+    return (int(spec[0:2], 16), int(spec[2:4], 16), int(spec[4:6], 16))
+
+
+def _as_rgb(value):
+    """Accept either a hex string or an already-parsed triple."""
+    if isinstance(value, str):
+        return _parse_hex(value)
+    return value
 
 
 class Canvas:
+    """A fixed-size RGB canvas with shape, line and text drawing."""
+
     def __init__(self, width, height, bg="#F6F1E6"):
         self.w = width
         self.h = height
         self.px = bytearray(width * height * 3)
         self.fill_rect(0, 0, width, height, bg)
 
-    def _set(self, x, y, color, alpha=255):
+    # -- low-level pixel access -------------------------------------------
+
+    def _plot(self, x, y, color, alpha=255):
+        """Set one pixel, blending over what is already there."""
         if x < 0 or y < 0 or x >= self.w or y >= self.h:
             return
         i = (y * self.w + x) * 3
         if alpha >= 255:
             self.px[i], self.px[i + 1], self.px[i + 2] = color
-        else:
-            inv = 255 - alpha
-            self.px[i] = (color[0] * alpha + self.px[i] * inv) // 255
-            self.px[i + 1] = (color[1] * alpha + self.px[i + 1] * inv) // 255
-            self.px[i + 2] = (color[2] * alpha + self.px[i + 2] * inv) // 255
+            return
+        inv = 255 - alpha
+        self.px[i] = (color[0] * alpha + self.px[i] * inv) // 255
+        self.px[i + 1] = (color[1] * alpha + self.px[i + 1] * inv) // 255
+        self.px[i + 2] = (color[2] * alpha + self.px[i + 2] * inv) // 255
+
+    # -- rectangles and straight lines ------------------------------------
 
     def fill_rect(self, x, y, w, h, color):
-        c = _hex(color) if isinstance(color, str) else color
+        c = _as_rgb(color)
         x0, y0 = max(0, x), max(0, y)
         x1, y1 = min(self.w, x + w), min(self.h, y + h)
         for yy in range(y0, y1):
@@ -54,7 +72,8 @@ class Canvas:
         self.fill_rect(x, y, t, h, color)
 
     def line(self, x0, y0, x1, y1, color, t=1):
-        c = _hex(color) if isinstance(color, str) else color
+        """Bresenham line, stamped as t-by-t squares along the way."""
+        c = _as_rgb(color)
         dx = abs(x1 - x0)
         dy = -abs(y1 - y0)
         sx = 1 if x0 < x1 else -1
@@ -72,22 +91,25 @@ class Canvas:
                 err += dx
                 y0 += sy
 
+    # -- circles and polygons ---------------------------------------------
+
     def fill_circle(self, cx, cy, r, color):
-        c = _hex(color) if isinstance(color, str) else color
+        c = _as_rgb(color)
         for yy in range(cy - r, cy + r + 1):
-            dx = int((r * r - (yy - cy) ** 2) ** 0.5) if abs(yy - cy) <= r else 0
-            self.fill_rect(cx - dx, yy, dx * 2 + 1, 1, c)
+            half = int((r * r - (yy - cy) ** 2) ** 0.5) if abs(yy - cy) <= r else 0
+            self.fill_rect(cx - half, yy, half * 2 + 1, 1, c)
 
     def circle_outline(self, cx, cy, r, color, t=2):
-        c = _hex(color) if isinstance(color, str) else color
+        c = _as_rgb(color)
         for yy in range(cy - r, cy + r + 1):
             for xx in range(cx - r, cx + r + 1):
                 d = ((xx - cx) ** 2 + (yy - cy) ** 2) ** 0.5
                 if abs(d - r) <= t / 2:
-                    self._set(xx, yy, c)
+                    self._plot(xx, yy, c)
 
     def fill_poly(self, points, color):
-        c = _hex(color) if isinstance(color, str) else color
+        """Scanline polygon fill, pairing up edge crossings per row."""
+        c = _as_rgb(color)
         ys = [p[1] for p in points]
         for yy in range(max(0, min(ys)), min(self.h, max(ys) + 1)):
             nodes = []
@@ -100,9 +122,11 @@ class Canvas:
                     nodes.append(x)
             nodes.sort()
             for k in range(0, len(nodes) - 1, 2):
-                self.fill_rect(int(nodes[k]), yy, max(1, int(nodes[k + 1]) - int(nodes[k])), 1, c)
+                self.fill_rect(int(nodes[k]), yy,
+                               max(1, int(nodes[k + 1]) - int(nodes[k])), 1, c)
 
-    # ---- text ----
+    # -- text ---------------------------------------------------------------
+
     def text_width(self, text, font):
         table = FONTS[font]
         total = 0
@@ -114,7 +138,8 @@ class Canvas:
         return total
 
     def draw_text(self, x, y, text, font, color):
-        c = _hex(color) if isinstance(color, str) else color
+        """Draw one line of bitmap text; returns the x after the last glyph."""
+        c = _as_rgb(color)
         table = FONTS[font]
         cx = x
         for ch in text:
@@ -132,15 +157,12 @@ class Canvas:
                     for xx in range(w):
                         a = raw[row + xx]
                         if a:
-                            self._set(cx + xx, y + dy + yy, c, a)
+                            self._plot(cx + xx, y + dy + yy, c, a)
             cx += adv
         return cx
 
-    def draw_wrapped(self, x, y, max_w, text, font, color, leading=None):
-        table = FONTS[font]
-        metrics = FONTS[font + "_metrics"]
-        if leading is None:
-            leading = metrics["ascent"] + metrics["descent"] + 2
+    def wrap_lines(self, text, font, max_w):
+        """Greedy word wrap; returns the list of lines that fit max_w."""
         words = text.split(" ")
         lines = []
         cur = ""
@@ -153,17 +175,26 @@ class Canvas:
                 cur = wd
         if cur:
             lines.append(cur)
+        return lines
+
+    def draw_wrapped(self, x, y, max_w, text, font, color, leading=None):
+        metrics = FONTS[font + "_metrics"]
+        if leading is None:
+            leading = metrics["ascent"] + metrics["descent"] + 2
         yy = y
-        for ln in lines:
+        for ln in self.wrap_lines(text, font, max_w):
             self.draw_text(x, yy, ln, font, color)
             yy += leading
         return yy
 
+    # -- output ---------------------------------------------------------------
+
     def save_png(self, path):
+        """Write the buffer as an 8-bit RGB PNG, no filtering, zlib level 9."""
         raw = bytearray()
         stride = self.w * 3
         for yy in range(self.h):
-            raw.append(0)  # filter: none
+            raw.append(0)  # filter byte: none
             raw += self.px[yy * stride:(yy + 1) * stride]
         comp = zlib.compress(bytes(raw), 9)
 
