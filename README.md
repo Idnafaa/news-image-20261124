@@ -1,20 +1,21 @@
-# news-image-20261124
+# The World in One Day — 24 November 2026
 
 [![make.fun · news-image-20261124](https://make.fun/badge/news-image-20261124.svg)](https://make.fun/bounty/news-image-20261124?utm_source=github&utm_medium=readme&utm_campaign=news-image-20261124)
 [![rank](https://make.fun/badge/news-image-20261124/Idnafaa/news-image-20261124/rank.svg)](https://make.fun/bounty/news-image-20261124/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=news-image-20261124)
 [![reward](https://make.fun/badge/news-image-20261124/Idnafaa/news-image-20261124/reward.svg)](https://make.fun/bounty/news-image-20261124?utm_source=github&utm_medium=readme&utm_campaign=news-image-20261124)
 
-One poster that sums up Tuesday 24 November 2026: the lead story is
-Nvidia bringing Jensen Huang back as chief executive, followed by six
-illustrated cards — Ukraine sinking a Russian warship off Libya, NATO
-sending AWACS to Poland, COP31 ending without a deal, and more — plus
-24 briefs from around the world. 31 stories, one image.
+What happened in the world on Tuesday 24 November 2026, drawn as one
+poster. Jensen Huang is back running Nvidia, a Russian warship was
+sunk off Libya, NATO rushed AWACS jets to Poland, the COP31 climate
+talks broke down, and 27 further stories round out the day — 31
+stories on a single 1024×1024 image, rendered with nothing but the
+Python standard library.
 
-## Run it
+## How to run it
 
 ```sh
-python3 render.py   # rebuild entry.png (pure Python stdlib, no network)
-python3 main.py     # copy entry.png to /output/entry.png
+python3 render.py   # redraw entry.png from scratch, no network needed
+python3 main.py     # place entry.png at /output/entry.png
 ```
 
 ---

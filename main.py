@@ -1,24 +1,25 @@
 # main.py — entrypoint for "The World in One Day — 24 November 2026".
 #
-# The poster itself is rendered at build time by render.py and committed
-# as entry.png. All this program does is place those exact bytes at
-# /output/entry.png. Pure Python 3.13 standard library, no network,
-# fully deterministic: the same input always produces the same output.
-import os
+# render.py produces the poster at build time and it ships in the repo
+# as entry.png. Running this program only places that exact file at
+# /output/entry.png, byte for byte. It uses nothing but the Python
+# 3.13 standard library, touches no network, and always gives the
+# same result for the same input.
 import shutil
 import sys
+from pathlib import Path
 
 
 def run():
-    here = os.path.dirname(os.path.abspath(__file__))
-    src = os.path.join(here, "entry.png")
-    if not os.path.isfile(src):
+    source = Path(__file__).resolve().parent / "entry.png"
+    if not source.is_file():
         print("entry.png missing next to main.py", file=sys.stderr)
         return 1
-    os.makedirs("/output", exist_ok=True)
-    dst = os.path.join("/output", "entry.png")
-    shutil.copyfile(src, dst)
-    print("wrote %s (%d bytes)" % (dst, os.path.getsize(dst)))
+    destination = Path("/output") / "entry.png"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, destination)
+    size = destination.stat().st_size
+    print("wrote %s (%d bytes)" % (destination, size))
     return 0
 
 
